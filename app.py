@@ -7,30 +7,73 @@ import matplotlib.pyplot as plt
 import joblib
 import os
 import sys
+from datetime import datetime
 
 # ==========================================
-# 0. INGENIERÍA DE RUTAS
+# 0. INGENIERÍA DE RUTAS (ARQUITECTURA RAÍZ)
 # ==========================================
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) 
 SRC_DIR = os.path.join(ROOT_DIR, 'src')
 ASSETS_DIR = os.path.join(ROOT_DIR, 'assets')
 MODELS_DIR = os.path.join(ROOT_DIR, 'models')
 
+# Inyectar 'src' al path para importar db_manager.py
 if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
+# Fallback seguro para base de datos (In-Memory Session State Logic)
 try:
-    from db_manager import init_db, save_consultation, get_history
-except ImportError:
+    # -------------------------------------------------------------
+    # Se incluye la lógica de db_manager.py aquí para garantizar que
+    # st.session_state se maneje correctamente en el archivo principal.
+    # -------------------------------------------------------------
+    
+    def init_db():
+        """Inicializa la estructura de almacenamiento en la sesión del usuario."""
+        if 'consultation_history' not in st.session_state:
+            st.session_state['consultation_history'] = []
+
+    def save_consultation(inputs: dict, prediction: str, confidence: float, status: str):
+        """Guarda el registro en la lista de memoria."""
+        init_db()
+        
+        record = {
+            'ID': len(st.session_state['consultation_history']) + 1,
+            'Fecha': datetime.now().strftime("%H:%M:%S"),
+            'Sexo': 'M' if inputs.get('Sex') == 1 else 'F',
+            'Edad': int(inputs.get('Age', 0)),
+            'HGB': float(inputs.get('HGB', 0.0)),
+            'WBC': float(inputs.get('WBC', 0.0)),
+            'Diagnóstico IA': prediction,
+            'Confianza': f"{confidence:.1f}%",
+            'Alerta': status
+        }
+        
+        st.session_state['consultation_history'].insert(0, record)
+
+    def get_history(limit: int = 50) -> pd.DataFrame:
+        """Convierte la lista de memoria en un DataFrame para visualizar."""
+        init_db()
+        data = st.session_state['consultation_history']
+        
+        if not data:
+            return pd.DataFrame()
+            
+        df = pd.DataFrame(data)
+        return df.head(limit)
+
+except Exception as e:
+    # Mocks vacíos si la carga de db_manager o la lógica fallan
     def init_db(): pass
     def save_consultation(*args): pass
     def get_history(*args): return pd.DataFrame()
+    st.error(f"Error en la lógica de persistencia: {e}")
 
 # ==========================================
 # 1. CONFIGURACIÓN DEL SISTEMA
 # ==========================================
 st.set_page_config(
-    page_title="HematoAI CDSS v1.1",
+    page_title="HematoAI CDSS v1.2",
     page_icon="🩸",
     layout="wide",
     initial_sidebar_state="expanded" # Fuerza sidebar abierta
@@ -51,6 +94,7 @@ plt.rcParams.update({
     'font.sans-serif': ['Inter', 'Arial']
 })
 
+# Cargar CSS
 css_file = os.path.join(ASSETS_DIR, 'style.css')
 if os.path.exists(css_file):
     with open(css_file) as f:
@@ -97,7 +141,7 @@ model, class_names, explainer, anomaly_model = load_engine()
 # 3. INTERFAZ: SIDEBAR
 # ==========================================
 st.sidebar.markdown("### 🧬 HEMATO-AI")
-st.sidebar.caption("v1.1 Production Release")
+st.sidebar.caption("v1.2 Production Release")
 st.sidebar.markdown("---")
 
 def get_user_input():
@@ -148,7 +192,7 @@ st.sidebar.info("System Status: 🟢 ONLINE")
 # 4. DASHBOARD CLÍNICO
 # ==========================================
 
-tab_diag, tab_hist = st.tabs(["EVALUACIÓN DIAGNÓSTICA", "HISTORIAL DE CASOS"])
+tab_diag, tab_hist = st.tabs(["EVALUACIÓN DIAGNÓSTICA", "HISTORIAL DE SESIÓN (RAM)"]) # Nombre de pestaña actualizado
 
 with tab_diag:
     hgb_val = input_df['HGB'].values[0] if 'HGB' in input_df.columns else 0
@@ -163,7 +207,7 @@ with tab_diag:
         st.markdown("#### 🔍 Análisis de Riesgo")
         
         if st.button("PROCESAR BIOPSIA DIGITAL", type="primary", use_container_width=True):
-            with st.spinner("Ejecutando pipeline de inferencia v1.1..."):
+            with st.spinner("Ejecutando pipeline de inferencia v1.2..."):
                 
                 prediction = model.predict(input_df)
                 pred_idx = int(prediction[0])
@@ -212,6 +256,7 @@ with tab_diag:
                         status_icon = "🦠"
                         ui_message = "REACTIVIDAD INMUNE / INFECCIOSA"
 
+                # Guardado en RAM (Lógica integrada desde db_manager.py)
                 save_consultation(input_df.iloc[0].to_dict(), pred_class, confidence, "OK" if not is_anomaly else "WARN")
 
                 st.markdown(f"""
@@ -246,6 +291,7 @@ with tab_diag:
         
         if 'pred_class' in locals() and confidence > 0:
             
+            # --- SHAP V4.1/1.2: FIX DISCREPANCIA DIMENSIONAL ---
             try:
                 st.markdown('<div class="glass-card" style="padding: 15px;">', unsafe_allow_html=True)
                 st.markdown("**Drivers de la Decisión (SHAP)**")
@@ -302,6 +348,7 @@ with tab_diag:
             except Exception as e:
                 st.error(f"Error visualizando SHAP: {str(e)}")
 
+            # Radar Chart
             try:
                 st.markdown('<div class="glass-card" style="padding: 15px;">', unsafe_allow_html=True)
                 st.markdown("**Morfología Vectorial**")
@@ -338,22 +385,31 @@ with tab_diag:
             st.markdown("""<div style="border: 2px dashed #334155; border-radius: 12px; height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b;">Esperando resultados...</div>""", unsafe_allow_html=True)
 
 with tab_hist:
-    st.markdown("### 📂 Registro Local de Pacientes")
-    # FIX: Reemplazar experimental_rerun por rerun
-    if st.button("🔄 Refrescar Tabla"):
-        try:
+    st.markdown("### 📂 Registro de Sesión")
+    
+    col_ref, col_del = st.columns([1, 2])
+
+    # 🔄 Botón Refrescar
+    if col_ref.button("🔄 Refrescar Tabla", help="Recargar datos de la sesión actual"):
+        st.rerun() # Comando moderno
+
+    # 🗑️ Botón Eliminar Historial
+    if col_del.button("🗑️ ELIMINAR Historial de Sesión", type="secondary", help="Borra todos los casos de la memoria de esta sesión. ¡Irreversible!"):
+        if 'consultation_history' in st.session_state:
+            del st.session_state['consultation_history']
             st.rerun()
-        except AttributeError:
-            st.experimental_rerun() # Fallback para versiones viejas
+        else:
+            st.warning("El historial ya está vacío.")
+            st.rerun() 
             
     try:
         df_h = get_history(limit=50)
         if not df_h.empty:
             st.dataframe(df_h, use_container_width=True)
         else:
-            st.info("La base de datos está vacía.")
+            st.info("El historial de esta sesión está vacío.")
     except:
-        st.warning("No se pudo conectar a la base de datos.")
+        st.warning("No se pudo cargar el historial.")
 
 st.markdown("---")
 st.caption("HematoAI CDSS v1.0 | Production Release | Matías Gacitúa Ruiz | MatiRCode")
