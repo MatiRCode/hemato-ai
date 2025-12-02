@@ -9,7 +9,7 @@ import os
 import sys
 
 # ==========================================
-# 0. INGENIERÍA DE RUTAS (ARQUITECTURA RAÍZ)
+# 0. INGENIERÍA DE RUTAS
 # ==========================================
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) 
 SRC_DIR = os.path.join(ROOT_DIR, 'src')
@@ -19,7 +19,6 @@ MODELS_DIR = os.path.join(ROOT_DIR, 'models')
 if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
-# Fallback seguro para base de datos
 try:
     from db_manager import init_db, save_consultation, get_history
 except ImportError:
@@ -31,15 +30,14 @@ except ImportError:
 # 1. CONFIGURACIÓN DEL SISTEMA
 # ==========================================
 st.set_page_config(
-    page_title="HematoAI CDSS v1.0",
+    page_title="HematoAI CDSS v1.1",
     page_icon="🩸",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded" # Fuerza sidebar abierta
 )
 
 init_db()
 
-# Configuración Visual Matplotlib
 plt.style.use('dark_background')
 plt.rcParams.update({
     'figure.facecolor': '#00000000', 
@@ -53,7 +51,6 @@ plt.rcParams.update({
     'font.sans-serif': ['Inter', 'Arial']
 })
 
-# Cargar CSS
 css_file = os.path.join(ASSETS_DIR, 'style.css')
 if os.path.exists(css_file):
     with open(css_file) as f:
@@ -100,7 +97,7 @@ model, class_names, explainer, anomaly_model = load_engine()
 # 3. INTERFAZ: SIDEBAR
 # ==========================================
 st.sidebar.markdown("### 🧬 HEMATO-AI")
-st.sidebar.caption("v1.0 Production Release") # <--- ETIQUETA OFICIAL v1.0
+st.sidebar.caption("v1.1 Production Release")
 st.sidebar.markdown("---")
 
 def get_user_input():
@@ -130,7 +127,6 @@ def get_user_input():
         'LYM_percent': (lym/wbc*100) if wbc > 0 else 0
     }
     
-    # Filtro Maestro: Solo columnas conocidas por el modelo
     try:
         model_features = model.get_booster().feature_names
         if model_features:
@@ -155,7 +151,6 @@ st.sidebar.info("System Status: 🟢 ONLINE")
 tab_diag, tab_hist = st.tabs(["EVALUACIÓN DIAGNÓSTICA", "HISTORIAL DE CASOS"])
 
 with tab_diag:
-    # HARD RULE (Sanity Check)
     hgb_val = input_df['HGB'].values[0] if 'HGB' in input_df.columns else 0
     if hgb_val > 0 and hgb_val < 2.0:
         st.error("⛔ ERROR: Hemoglobina < 2.0 g/dL. Valor crítico incompatible o error de entrada.")
@@ -168,18 +163,15 @@ with tab_diag:
         st.markdown("#### 🔍 Análisis de Riesgo")
         
         if st.button("PROCESAR BIOPSIA DIGITAL", type="primary", use_container_width=True):
-            with st.spinner("Ejecutando pipeline de inferencia v1.0..."):
+            with st.spinner("Ejecutando pipeline de inferencia v1.1..."):
                 
-                # A. Predicción
                 prediction = model.predict(input_df)
                 pred_idx = int(prediction[0])
                 pred_class = class_names[pred_idx]
                 
-                # B. Probabilidades
                 probas = model.predict_proba(input_df)[0]
                 confidence = probas[pred_idx] * 100
                 
-                # C. Detección de Anomalías
                 is_anomaly = False
                 if anomaly_model:
                     try:
@@ -188,7 +180,6 @@ with tab_diag:
                     except:
                         pass 
 
-                # D. Lógica de Negocio (SAFETY LAYER V2)
                 status_color = "#64748b"
                 status_icon = "⚪"
                 
@@ -223,7 +214,6 @@ with tab_diag:
 
                 save_consultation(input_df.iloc[0].to_dict(), pred_class, confidence, "OK" if not is_anomaly else "WARN")
 
-                # E. Renderizado Principal
                 st.markdown(f"""
                 <div style="border-left: 4px solid {status_color}; padding-left: 20px; margin-top: 20px;">
                     <h5 style="color: {status_color}; margin:0; letter-spacing: 1px;">RESULTADO DEL MODELO</h5>
@@ -239,7 +229,6 @@ with tab_diag:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # F. Probabilidades
                 st.markdown("---")
                 st.markdown("###### 📊 Probabilidades por Clase")
                 probs_df = pd.DataFrame({'Clase': class_names, 'Prob': probas}).sort_values('Prob', ascending=False).head(4)
@@ -257,7 +246,6 @@ with tab_diag:
         
         if 'pred_class' in locals() and confidence > 0:
             
-            # --- SHAP V4.1/1.0: FIX DISCREPANCIA DIMENSIONAL ---
             try:
                 st.markdown('<div class="glass-card" style="padding: 15px;">', unsafe_allow_html=True)
                 st.markdown("**Drivers de la Decisión (SHAP)**")
@@ -313,9 +301,7 @@ with tab_diag:
             
             except Exception as e:
                 st.error(f"Error visualizando SHAP: {str(e)}")
-            # -----------------------------------------------
 
-            # Radar Chart
             try:
                 st.markdown('<div class="glass-card" style="padding: 15px;">', unsafe_allow_html=True)
                 st.markdown("**Morfología Vectorial**")
@@ -353,8 +339,13 @@ with tab_diag:
 
 with tab_hist:
     st.markdown("### 📂 Registro Local de Pacientes")
+    # FIX: Reemplazar experimental_rerun por rerun
     if st.button("🔄 Refrescar Tabla"):
-        st.experimental_rerun()
+        try:
+            st.rerun()
+        except AttributeError:
+            st.experimental_rerun() # Fallback para versiones viejas
+            
     try:
         df_h = get_history(limit=50)
         if not df_h.empty:
@@ -365,4 +356,4 @@ with tab_hist:
         st.warning("No se pudo conectar a la base de datos.")
 
 st.markdown("---")
-st.caption("HematoAI CDSS v1.0 | Production Release | Matías Gacitúa Ruiz | MatiRCode")
+st.caption("HematoAI CDSS v1.1 | Production Release | Powered by XGBoost & SHAP")
