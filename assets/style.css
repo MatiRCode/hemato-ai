@@ -94,4 +94,4 @@ div.stButton > button:first-child:hover {
 /* Ocultar Chrome de Streamlit */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
+/* header {visibility: hidden;} */
