@@ -1,0 +1,97 @@
+/* assets/style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
+
+/* --- BASE & TYPOGRAPHY --- */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    color: #cbd5e1; /* Slate-300: Texto suave para evitar fatiga visual */
+}
+
+/* Fondo Global - Medical Dark Gray */
+.stApp {
+    background-color: #0f172a; /* Slate-900 */
+    background-image: radial-gradient(at 0% 0%, hsla(215,27%,22%,1) 0, transparent 50%), 
+                      radial-gradient(at 100% 0%, hsla(215,27%,20%,1) 0, transparent 50%);
+}
+
+/* Sidebar - Panel de Control */
+[data-testid="stSidebar"] {
+    background-color: #020617; /* Slate-950 (Casi negro) */
+    border-right: 1px solid #1e293b; /* Slate-800 */
+}
+
+/* --- TARJETAS & CONTENEDORES --- */
+.glass-card {
+    background: rgba(30, 41, 59, 0.5); /* Slate-800 con transparencia */
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Headers */
+h1, h2, h3 {
+    color: #f8fafc;
+    letter-spacing: -0.5px;
+}
+
+.main-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #f8fafc, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- BOTONES DE ACCIÓN --- */
+div.stButton > button {
+    background-color: #2563eb; /* Blue-600 */
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+div.stButton > button:hover {
+    background-color: #1d4ed8; /* Blue-700 */
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+
+/* Botón Primario (Ejecutar Análisis) - Énfasis Clínico */
+div.stButton > button:first-child {
+    background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+    border: 1px solid #475569;
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+}
+
+div.stButton > button:first-child:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+}
+
+/* --- RESULTADOS --- */
+.metric-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Ajustes de Streamlit Elements */
+[data-testid="stExpander"] {
+    background-color: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+}
+
+/* Ocultar Chrome de Streamlit */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
