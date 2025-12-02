@@ -72,7 +72,7 @@ PROYECTO WOW/
 1.  **Clone the repository:**
 
     ```bash
-    git clone [https://github.com/YOUR_USERNAME/hemato-ai.git](https://github.com/YOUR_USERNAME/hemato-ai.git)
+    git clone [https://github.com/matircode/hemato-ai.git](https://github.com/matircode/hemato-ai.git)
     cd hemato-ai
     ```
 
