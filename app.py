@@ -356,4 +356,4 @@ with tab_hist:
         st.warning("No se pudo conectar a la base de datos.")
 
 st.markdown("---")
-st.caption("HematoAI CDSS v1.1 | Production Release | Powered by XGBoost & SHAP")
+st.caption("HematoAI CDSS v1.0 | Production Release | Matías Gacitúa Ruiz | MatiRCode")
